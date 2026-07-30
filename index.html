@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Photo Gallery</title>
+  <title>Universal Media Gallery</title>
   <style>
     * {
       box-sizing: border-box;
@@ -36,7 +36,7 @@
 
     .gallery {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 20px;
       max-width: 1200px;
       margin: 0 auto;
@@ -48,6 +48,9 @@
       overflow: hidden;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .card:hover {
@@ -55,11 +58,68 @@
       box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
     }
 
+    /* Standard height for Images */
     .card img {
       width: 100%;
-      height: 200px;
+      height: 220px;
       object-fit: cover;
       display: block;
+    }
+
+    /* Embedded Video Player Frame */
+    .card iframe {
+      width: 100%;
+      height: 220px;
+      border: none;
+      background: #000;
+    }
+
+    /* Audio Container */
+    .audio-container {
+      height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #eef2f5;
+      padding: 15px;
+    }
+
+    .audio-container audio {
+      width: 100%;
+    }
+
+    /* File Download Box */
+    .file-container {
+      height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #eef2f5;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .file-icon {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+
+    .file-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #1a73e8;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    .file-btn:hover {
+      background-color: #1557b0;
     }
 
     .card .info {
@@ -70,6 +130,8 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      background: #fff;
+      border-top: 1px solid #eee;
     }
 
     #loading {
@@ -90,18 +152,16 @@
 <body>
 
   <header>
-    <h1>Photo Gallery</h1>
-    <p>Media loaded directly from Google Drive</p>
+    <h1>Media & File Gallery</h1>
+    <p>Loaded dynamically from Google Drive</p>
   </header>
 
-  <div id="loading">Loading photos...</div>
+  <div id="loading">Loading drive content...</div>
   <div id="error"></div>
   <div class="gallery" id="gallery"></div>
 
   <script>
-    // Configuration
     const FOLDER_ID = '1IlBDjudHYmo6y-JmYj7-IY9hhADEDxUC';
-    // Replace YOUR_GOOGLE_DRIVE_API_KEY with your actual API key from Google Cloud Console
     const API_KEY = 'AIzaSyDM0_CoUN-DVcE4XWzDn2auPtPt1CQP2L0';
 
     async function loadGallery() {
@@ -111,12 +171,12 @@
 
       if (API_KEY === 'YOUR_GOOGLE_DRIVE_API_KEY') {
         loadingEl.style.display = 'none';
-        errorEl.textContent = 'Please insert your Google Drive API key into the script to display the photos.';
+        errorEl.textContent = 'Please insert your Google Drive API key into the script.';
         return;
       }
 
-      const query = `'${FOLDER_ID}' in parents and trashed = false and mimeType contains 'image/'`;
-      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,webContentLink,thumbnailLink)&key=${API_KEY}`;
+      const query = `'${FOLDER_ID}' in parents and trashed = false`;
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,webViewLink)&key=${API_KEY}`;
 
       try {
         const response = await fetch(url);
@@ -129,7 +189,7 @@
         loadingEl.style.display = 'none';
 
         if (!data.files || data.files.length === 0) {
-          errorEl.textContent = 'No images found in this folder.';
+          errorEl.textContent = 'No files found in this folder.';
           return;
         }
 
@@ -137,13 +197,57 @@
           const card = document.createElement('div');
           card.className = 'card';
 
-          // Thumbnail / Direct View URL construction
-          const imgUrl = `https://lh3.googleusercontent.com/d/${file.id}`;
+          const mime = file.mimeType;
+          const directMediaUrl = `https://lh3.googleusercontent.com/d/${file.id}`;
+          const videoPreviewUrl = `https://drive.google.com/file/d/${file.id}/preview`;
+          const viewLink = file.webViewLink || directMediaUrl;
+
+          let contentHTML = '';
+
+          // 1. IMAGE HANDLING
+          if (mime.startsWith('image/')) {
+            contentHTML = `
+              <a href="${directMediaUrl}" target="_blank" rel="noopener noreferrer">
+                <img src="${directMediaUrl}" alt="${file.name}" loading="lazy" />
+              </a>
+            `;
+          } 
+          // 2. VIDEO HANDLING (Using iframe embed player)
+          else if (mime.startsWith('video/')) {
+            contentHTML = `
+              <iframe src="${videoPreviewUrl}" allow="autoplay" allowfullscreen></iframe>
+            `;
+          } 
+          // 3. AUDIO HANDLING
+          else if (mime.startsWith('audio/')) {
+            const streamAudioUrl = `https://drive.google.com/uc?export=download&id=${file.id}`;
+            contentHTML = `
+              <div class="audio-container">
+                <div class="file-icon">🎵</div>
+                <audio controls preload="metadata">
+                  <source src="${streamAudioUrl}" type="${mime}">
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
+            `;
+          } 
+          // 4. OTHER FILES (PDFs, Docs, ZIPs, etc.)
+          else {
+            let icon = '📁';
+            if (mime.includes('pdf')) icon = '📄';
+            else if (mime.includes('zip') || mime.includes('compressed')) icon = '📦';
+            else if (mime.includes('spreadsheet') || mime.includes('excel')) icon = '📊';
+
+            contentHTML = `
+              <div class="file-container">
+                <div class="file-icon">${icon}</div>
+                <a href="${viewLink}" target="_blank" class="file-btn" rel="noopener noreferrer">Open / Download</a>
+              </div>
+            `;
+          }
 
           card.innerHTML = `
-            <a href="${imgUrl}" target="_blank" rel="noopener noreferrer">
-              <img src="${imgUrl}" alt="${file.name}" loading="lazy" />
-            </a>
+            ${contentHTML}
             <div class="info" title="${file.name}">${file.name}</div>
           `;
 
@@ -151,7 +255,7 @@
         });
       } catch (err) {
         loadingEl.style.display = 'none';
-        errorEl.textContent = `Error loading photos: ${err.message}`;
+        errorEl.textContent = `Error loading content: ${err.message}`;
       }
     }
 
@@ -159,5 +263,6 @@
   </script>
 
 </body>
-  </html>
-  
+</html>
+
+
