@@ -261,13 +261,14 @@
     </div>
   </div>
 
-  <script>
+  <script type = "module">
+    import {FOLDER_ID,API_KEY,ADMIN_PASSKEY} from './txt.js'
     // Configuration
     const FOLDER_ID = FOLDER_ID;
     const API_KEY = API_KEY;
     
     // SET YOUR PASSKEY HERE
-    const ADMIN_PASSKEY = PASSWORD; 
+    const ADMIN_PASSKEY = ADMIN_PASSKEY; 
 
     let allFiles = [];
     let currentCategory = 'all';
